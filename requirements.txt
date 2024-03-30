@@ -1,0 +1,6 @@
+datasets
+Jinja2
+setuptools
+torch>=2.1.1
+tqdm
+transformers>=4.38.2

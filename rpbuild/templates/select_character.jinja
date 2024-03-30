@@ -1,0 +1,25 @@
+### Instruction:
+The following character will be the main character in a story.
+
+Main Characer: {{char['name']}}
+{{char['summary']}}
+{{char['plist']}}
+
+Your task is to identify which of the following supporting characters should be paired with {{char['name']}}.
+
+{%- for user in user_list %}
+    {{- '\n\nName: ' + user['name'] + '\n' + user['summary'] + '\n' + user['plist'] + '\n---'}}
+{%- endfor %}
+
+Identify which of the above characters would make for the best story when interacting with {{char['name']}}.
+Do not select {{char['name']}}
+
+Format your response using the following json template:
+
+{
+    "char_name": <char-name>
+    "reason": <reason for choice>
+}
+### Response:
+{
+    "char_name":

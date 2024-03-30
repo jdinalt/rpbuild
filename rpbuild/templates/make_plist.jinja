@@ -1,0 +1,66 @@
+# AI Roleplay
+
+Today, I want to explain a token-optimized character format that helps optimize token counts.
+
+The main reason why this guide works is because of author's notes. This is information that is injected into the chat at intervals to keep the AI in context. The main reason why we're using author's notes is because it reduces character card token size while allowing us to preserve small details of that character.
+
+## Example Character
+
+Today, we'll be using "Manami." The main reason is because she's the character I spent a long time creating and she's the perfect example for this guide.
+
+Following this guide, Manami's character card went from about 1300 tokens to only 599 tokens and even that can be reduced with some clever writing.
+
+## PLists
+
+PLists are where you describe the traits of a character. This includes personality, clothing, body, and even the environment of your roleplay.
+
+You want to group as much as possible into one PList. The format should look like this:
+
+```
+[Character's persona: traits; Character's clothes: traits; Character's body: traits; Genre: genre; Tags: tags; Scenario: scenario]
+[Extra PList 1: traits; Extra PList 2: traits]
+```
+
+You can see how compressed that looks! A lot of the fields after character traits are completely optional. For Manami, I decided to keep clothes and body traits because I believe they're important to her RP. Make sure to remove the leading space before the first entry.
+
+If you don't want to use :, you can also use =. They're interchangeable. However, : is supported on more LLaMA model derivatives.
+
+The overall goal here is to leave it to the AI for generating new scenarios based on what you provide. For that, it needs more context and therefore more optimization. Rather than creating more arrays, semicolons are used to indicate the end of one tag section and the beginning of another.
+
+Remember basic PList principles. Traits that are further towards the end are ranked as more important than ones at the top!
+
+## Complicated traits
+
+Sometimes traits can be very complicated to explain. Let's look at one of Manami's complicated traits:
+
+One of Manami's fatal flaws is that most of her friendships are shallow, but she has deep conversations with close friends. This is difficult to implement with just one tag, so I would add makes shallow friendships, respects few friends along with close friends with {{user}}.
+
+The reason why I'm highlighting this concept is because traits may need multiple descriptive tags to fully explain themselves. I also highlight that the user is a close friend with Manami, otherwise the AI may not generate deep conversation with the user.
+
+## Optional sections
+
+You may want to include some extra sections to your PList for further descriptiveness. Here are some optional sections:
+
+Outfit - What does the character wear?
+Body - What does the character look like?
+Genre - What is the overall genre of the RP?
+Tags - Any extra tags you want to include?
+Scenario - What's a one-sentence description of the scenario? (Make sure to use {{user}} and {{char}} instead of the explicit names or second person)
+
+My recommendation is to keep the outfit, body, genre, and tags categories. For scenario, keep it short.
+
+I stated this at the top of the PList section, but here's what the overall format will look like if these sections are included.
+
+```
+[Character: traits; Character's clothes: traits; Character's body: traits; Genre: genre; Tags: tags; Scenario: scenario]
+```
+
+Here is Manami's full PList
+
+```
+[Manami's persona: extroverted, tomboy, athletic, intelligent, caring, kind, sweet, honest, happy, sensitive, selfless, enthusiastic, silly, curious, dreamer, inferiority complex, doubts her intelligence, makes shallow friendships, respects few friends, loves chatting, likes anime and manga, likes video games, likes swimming, likes the beach, close friends with {{user}}, classmates with {{user}}; Manami's clothes: mint-green blouse, denim shorts, flats; Manami's body: young woman, fair-skinned, light blue hair, short hair, messy hair, blue eyes, magenta nail polish; Genre: slice of life; Tags: city, park, quantum physics, exam, university; Scenario: {{char}} wants {{user}}'s help with studying for their next quantum physics exam. Eventually they finish studying and hang out together.]
+```
+
+Given the following character description, convert it to the PList format.
+
+{{description}}

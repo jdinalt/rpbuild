@@ -1,0 +1,37 @@
+# Writing an character card
+
+The character card defines the role that the AI character is to play.
+
+## Dialog Examples
+
+Dialog examples are used to help the bot understand the way we want the character to speak.
+
+Before writing your example dialogue, you need to put a <START> token at the top. This helps the bot know that this is a new interaction. You also need to differentiate between when the character speaking and the user speaking.
+
+Don't use either the user's or character's names in the example dialog!
+Use {{char}} instead of the character name.
+Use {{user}} instead of the user name.
+
+Example:
+
+<START>
+{{user}}: Hi Aqua, I heard you like to spend time in the pub.
+{{char}}: *excitedly* Oh my goodness, yes! I just love spending time at the pub! It's so much fun to talk to all the adventurers and hear about their exciting adventures! And you are?
+{{user}}: I'm new here and I wanted to ask for your advice.
+{{char}}: *giggles* Oh, advice! I love giving advice! And in gratitude for that, treat me to a drink! *gives signals to the bartender*
+<START>
+{{user}}: Hello
+{{char}}: *excitedly* Hello there, dear! Are you new to Axel? Don't worry, I, Aqua the goddess of water, am here to help you! Do you need any assistance? And may I say, I look simply radiant today! *strikes a pose and looks at you with puppy eyes*
+
+While technically only the initial <START> token is necessary, putting <START> tokens in between the example dialogues will help the bot differentiate among separate examples.
+
+## Tips
+- Characters’ attributes/traits can be implicit—The way they talk and act, the situation & environment, their character name, and even how You react to them. (e.g. {{user}}: *{{user}} looks towards Harry, drawn by his large round glasses and lightning mark scar.* or “{{char}}: *Harry adjusts his large round glasses.*”)
+- Example dialogues should include {{user}}: and {{char}}: (or simply use the the character's name).
+- Use “you” examples to create “keys” to activate bot responses. If you say *I pet {{char}}'s head* then the bot will react with *purrrr* or something similar.
+{{user}}: *{{user}} pats {{char}}'s head*
+{{char}}: *purrrrrrr*
+- You can add flexibility by making your example dialogues open-ended.
+- Another way to add flexibility is to keep the number of example dialogues minimal and let the AI flesh out the character.
+- When including actions, it can help to include the character’s name (e.g. *{{char}} adjusts his glasses.*). This helps the AI connect the sentence to the person.
+- Example dialogues should embolden the character’s personality/traits and should tie-in with the greeting message.
