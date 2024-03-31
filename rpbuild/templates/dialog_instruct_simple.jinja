@@ -1,0 +1,4 @@
+{{content}}
+{{- instruct_token -}}
+{%- if char.plist %}{{ '\n' + char.plist.strip() + '\n'}}{% endif -%}
+{%- if instruction %}{{'\n' + instruction.strip() }}{% endif -%}

@@ -19,6 +19,9 @@ See "./notebooks" directory for usage examples.
 - generate_dialog: This goes more in-depth into dialog generation.
 - test_generation_loop: This is a test harness for the script DDP batch generation.
 
+## Demo Dataset
+[roleplay_build dataset](https://huggingface.co/datasets/dinalt/roleplay_build) on Huggingface hub.
+
 ## Example
 ### Create Metadata
 Create character metadata from seeds.

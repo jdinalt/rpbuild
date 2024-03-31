@@ -1,0 +1,4 @@
+{%- for message in messages -%}
+    {{- message['content'] + '\n' -}}
+{%- endfor -%}
+{%- if add_generation_prompt %}{{'### Response:\n'}}{% endif -%}

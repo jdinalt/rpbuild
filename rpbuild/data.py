@@ -85,6 +85,8 @@ def dump_character_data(character_data):
 def print_message(message):
     content = message['content']
     role = message['role']
+    if not role:
+        role = ""
     tokens = message.get('tokens')
     if tokens:
         tokens = f" ({tokens})"
@@ -115,3 +117,33 @@ def print_conversation(conversation, director_log=None):
 # Get a random character from the dataset
 def random_char(dataset):
     return dataset[random.randint(0, len(dataset)-1)]
+
+# Convert extended conversation format to standard format
+# This should allow the conversation to work with standard chat templates.
+# - name are prepended to messages
+# - token counts, names, are removed
+# - outputs only "role" and "content"
+def flatten_conversation(
+    conversation,
+):
+    # Copy the conversation, as we don't want to add this to the dataset.
+    output = []
+
+    def apply_name(name, content):
+        return name + ": " + content
+    
+    for message in conversation:
+        role = message["role"]
+        content = message["content"]
+        name = message["name"]
+        
+        match message["role"]:
+            case "system":
+                pass
+            case "assistant" | "user":
+                content = apply_name(name, content)
+            case _:
+                raise RuntimeError(f"Undefined role {message['role']}")
+        output.append( { "role": role, "content": content } )
+            
+    return output

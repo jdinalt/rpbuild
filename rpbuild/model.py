@@ -55,8 +55,8 @@ class CausalLM():
         
         if self.tokenizer.pad_token is None:
             print("No PAD token defined. Setting pad token to EOS")
-            self.tokenizer.pad_token = tokenizer.eos_token
-            self.tokenizer.pad_token_id = tokenizer.eos_token_id
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
         
         if self.tokenizer.padding_side == 'right':
             print("Tokenizer uses \"right\" padding; this may require moving it to \"left\" for batch generation.")

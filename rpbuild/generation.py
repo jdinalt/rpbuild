@@ -56,6 +56,7 @@ def generate_dialog(batch, causal_lm, dataset, max_tokens=DEFAULT_MAX_TOKENS):
             causal_lm=causal_lm,
             generation_config=char_preset,
             user_meta=user_meta,
+            template_config=rp.char.TemplateConfig(),
             gen_post_process=dialog_filter,
             history_token_limit=1800,
         )
@@ -66,6 +67,7 @@ def generate_dialog(batch, causal_lm, dataset, max_tokens=DEFAULT_MAX_TOKENS):
             causal_lm=causal_lm,
             generation_config=user_preset,
             user_meta=char_meta,
+            template_config=rp.char.TemplateConfig(),
             gen_post_process=dialog_filter,
             history_token_limit=1800,
         )

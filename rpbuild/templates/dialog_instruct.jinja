@@ -1,0 +1,13 @@
+{{content}}
+{{- instruct_token -}}
+Write the next response for {{char.name}}.
+
+Format actions and narration like this:
+
+*Alice enters the room...*
+
+*I notice a curious figure approaching me...*
+
+Keep your response short.
+{%- if char.plist %}{{ '\n' + char.plist.strip() + '\n'}}{% endif -%}
+{%- if instruction %}{{'\n' + instruction.strip() }}{% endif -%}

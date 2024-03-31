@@ -71,7 +71,7 @@ def main(local_rank, args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--dataset-id", type=str,
+    parser.add_argument("--dataset-id", type=str, default="dinalt/roleplay_build",
                     help="dataset path or id")
     parser.add_argument("--output-dir", type=str,
                     help="output-dir")

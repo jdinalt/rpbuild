@@ -1,6 +1,12 @@
-{{description}}
+{%- if system %}{{system + '\n'}}{% endif -%}
+{{char.description}}
+{%- if scenario %}{{scenario + '\n'}}{% endif -%}
+{%- if persona %}{{persona + '\n'}}{% endif -%}
 
-{%- for example in example_dialog %}
-    {{- '\n\n### Example Dialog:' + example}}
-{%- endfor %}
-### New Roleplay:
+{%- if char.example_dialog -%}
+    {% for example in char.example_dialog %}
+        {%- if example_sep %}{{example_sep}}{% endif -%}
+        {{- example}}
+    {%- endfor -%}
+{%- endif -%}
+{%- if chat_start %}{{'\n' + chat_start }}{% endif -%}

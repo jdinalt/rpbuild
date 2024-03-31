@@ -6,7 +6,7 @@ import jinja2
 from jinja2.exceptions import TemplateError
 
 from rpbuild import load_template
-from rpbuild.data import make_message, substitute_names, print_conversation
+from rpbuild.data import make_message, substitute_names, print_conversation, flatten_conversation
 
 start_token_re = re.compile(r"<START>")
 
@@ -42,6 +42,50 @@ class CharMeta():
             example_dialog=start_token_re.split(data["example_dialog"])[1:] if FIX_DIALOG_EXAMPLES else data["example_dialog"]
         )
 
+class TemplateConfig():
+    def __init__(
+        self,
+        chat_template=load_template("models/original.jinja"),
+        system=load_template("char_sys_prompt.jinja"),
+        instruct=load_template("dialog_instruct.jinja"),
+        system_args=dict(
+            example_sep="<START>",
+            chat_start="### Begin Roleplay:",
+        ),
+        instruct_args=dict(
+            instruct_token="\n### Instruction:\n"
+        )
+    ):
+        self.environment =  jinja2.Environment()
+        self.chat_template = self.environment.from_string(chat_template)
+        self.system= self.environment.from_string(system)
+        self.instruct = self.environment.from_string(instruct)
+        self.system_args = system_args
+        self.instruct_args = instruct_args
+
+    def render_system(self, char, user):
+        return self.system.render(
+            **(dict(
+                char=char,
+                user=user,
+            ) | self.system_args)
+        )
+
+    def render_instruct(self, content, char, user, instruction):
+        return self.instruct.render(
+            **(dict(
+                content=content,
+                char=char,
+                user=user,
+                instruction=instruction,
+            ) | self.instruct_args)
+        )
+    def render_conversation(self, messages, add_generation_prompt):
+        return self.chat_template.render(
+            messages=messages,
+            add_generation_prompt=add_generation_prompt,
+        )
+        
 # Represents a character in a roleplay.
 class Character(CharMeta):
     def __init__(
@@ -49,12 +93,10 @@ class Character(CharMeta):
         char_meta,
         causal_lm,
         generation_config,
+        template_config,
         user_meta,
         gen_post_process=None,
         history=None,
-        max_examples=1,
-        chat_template=load_template("chat_prompt.jinja"),
-        sys_prompt_template=load_template("char_sys_prompt.jinja"),
         debug=False,
         history_token_limit=None
     ):
@@ -65,11 +107,8 @@ class Character(CharMeta):
         self._sub_char_names()
         self.causal_lm = causal_lm
         self.generation_config = self.causal_lm.named_generation_config(generation_config)
-        self.gen_post_process=gen_post_process
-        #self.environment =  jinja2.Environment(trim_blocks=True, lstrip_blocks=True)
-        self.environment =  jinja2.Environment()
-        self.chat_template = self.environment.from_string(chat_template)
-        self.sys_prompt_template = self.environment.from_string(sys_prompt_template)
+        self.gen_post_process = gen_post_process
+        self.t_config = template_config
         self.director_log = []
         
         if history is not None:
@@ -80,7 +119,7 @@ class Character(CharMeta):
             self.conversation = []
     
             # Create persistent context
-            sys_prompt = self.system_prompt(max_examples=max_examples)
+            sys_prompt = self.system_prompt()
             self.system_says(sys_prompt)
 
     # Replace character name templates with concrete names
@@ -124,30 +163,30 @@ class Character(CharMeta):
         greeting = substitute_names(self.greeting, self.name, self.user_meta.name)
         return self.char_says(greeting)
 
-    def _chat_prompt(self, **kwargs):
-        template_kwargs = {**self.causal_lm.tokenizer.special_tokens_map, **kwargs}
-        return self.chat_template.render(
-            **template_kwargs
-        )
-
     def chat_prompt(self, instruction=None):
         messages = self.get_conversation(token_limit=self.history_token_limit, min_len=2)
-        return self._chat_prompt(
-            char=self.name,
-            user=self.user_meta.name,
-            plist=self.plist,
-            messages=messages,
-            instruction=instruction,
-        )
+
+        # Flatten to standard chat_template format.
+        messages = flatten_conversation(messages)
+
+        last_message = messages[-1]
+        if last_message:
+            last_message["content"] = self.t_config.render_instruct(
+                content=last_message["content"],
+                char=self,
+                user=self.user_meta,
+                instruction=instruction,
+            )
         
-    def system_prompt(self, max_examples=1):
-        return self.sys_prompt_template.render(
-            example_dialog=self.example_dialog[:max_examples],
-            description=self.description,
-            plist=self.plist,
-            summary=self.summary,
-            char=self.name,
-            user=self.user_meta.name,
+        return self.t_config.render_conversation(
+            messages=messages,
+            add_generation_prompt=True,
+        ) + self.name + ":"
+        
+    def system_prompt(self):
+        return self.t_config.render_system(
+            char=self,
+            user=self.user_meta,
         )
     
     def generate(self, instruction=None, max_new_tokens=512, auto_add=True, max_retries=2):
