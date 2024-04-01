@@ -15,12 +15,23 @@ import rpbuild.data
 import rpbuild.writer
 import rpbuild.director
 import rpbuild.roleplay
+from rpbuild.model import InstructGen
+from rpbuild.data import load_template
 
 DEFAULT_MAX_TOKENS = 4000
 
-# Addresses a bug in the first test dataset
-FIX_DIALOG_EXAMPLES = False
-
+# Some of the original meta-data is missing plists.
+# This will try to build a plist and add it to the metadata, if missing.
+def fix_plist(meta, causal_lm, debug=False):
+    if len(meta.plist) == 0:
+        if debug:
+            print(f"Generating plist for {meta.name}")
+        plist_generator = PListGenerator(causal_lm, debug_level=2 if debug else 1)
+        meta.plist = plist_generator.generate(meta.description)
+        if debug:
+            print(meta.plist)
+    return meta
+                
 # The primary inference entry-point for this task
 # Given a batch of characters meta data, generate new data and attach it.
 def generate_dialog(batch, causal_lm, dataset, max_tokens=DEFAULT_MAX_TOKENS):
@@ -37,14 +48,16 @@ def generate_dialog(batch, causal_lm, dataset, max_tokens=DEFAULT_MAX_TOKENS):
         char_meta = rp.char.CharMeta.from_data(character)
         writer_selection = writer.choose_supporting_character(char_meta, rp.writer.get_random_proxy_users(dataset, char_meta, n=7))
         user_meta = writer_selection["meta"]
+
+        # Fix missing plists
+        char_meta = fix_plist(char_meta, causal_lm)
+        user_meta = fix_plist(user_meta, causal_lm)
         
         # Generate a script
         scenario = writer(
             char_meta=char_meta,
             user_meta=user_meta,
         )
-
-        dialog_filter=None
 
         # Pick random generation presets for each character.
         char_preset = rp.model.random_preset()
@@ -56,7 +69,9 @@ def generate_dialog(batch, causal_lm, dataset, max_tokens=DEFAULT_MAX_TOKENS):
             causal_lm=causal_lm,
             generation_config=char_preset,
             user_meta=user_meta,
-            template_config=rp.char.TemplateConfig(),
+            template_config=rp.char.TemplateConfig(
+                chat_template=causal_lm.chat_template,
+            ),
             gen_post_process=dialog_filter,
             history_token_limit=1800,
         )
@@ -67,7 +82,9 @@ def generate_dialog(batch, causal_lm, dataset, max_tokens=DEFAULT_MAX_TOKENS):
             causal_lm=causal_lm,
             generation_config=user_preset,
             user_meta=char_meta,
-            template_config=rp.char.TemplateConfig(),
+            template_config=rp.char.TemplateConfig(
+                chat_template=causal_lm.chat_template,
+            ),
             gen_post_process=dialog_filter,
             history_token_limit=1800,
         )
@@ -93,13 +110,10 @@ def generate_dialog(batch, causal_lm, dataset, max_tokens=DEFAULT_MAX_TOKENS):
 
         character['pairing_reason'] = writer_selection.get('reason')
         character['scenario'] = scenario
+        character['plist'] = char_meta.plist
         character['preset'] = char_preset
         character["conversation"] = char.conversation
         character["director_log"] = char.director_log
-
-        # Fix example dialog
-        if FIX_DIALOG_EXAMPLES:
-            character["example_dialog"] = start_token_re.split(character["example_dialog"])[1:]
 
         # Attach proxy-user meta, as to allow recreation
         character["proxy"] = dict(
@@ -115,6 +129,39 @@ def generate_dialog(batch, causal_lm, dataset, max_tokens=DEFAULT_MAX_TOKENS):
         )
     
     return batch
+
+plist_re = re.compile(r"\[.*?\]")
+
+class PListGenerator():
+    def __init__(self, causal_lm, debug_level=1):
+        self.plist_instruct = InstructGen(
+            causal_lm,
+            load_template("make_plist.jinja"),
+            filter=self.plist_filter,
+        )
+        
+        self.debug_level = debug_level
+        
+    def generate(self, description, max_retries=5):
+        for i in range(max_retries):
+            plist = self.plist_instruct(description=description)
+            if plist:
+                return plist
+            if self.debug_level > 1:
+                print(f"plist generation failed. Retry {i+1}")
+        if self.debug_level > 0:
+            print(f"plist generation failed after multiple retries.")
+        return ""
+        
+    @staticmethod
+    def plist_filter(response, **kwargs):
+        m = plist_re.search(response)
+        if m:
+            plist = m.group()
+            return plist
+        else:
+            print(f"plist generation failed: {response}")
+        return ""
 
 # Main inference loop
 # Processes the dataset

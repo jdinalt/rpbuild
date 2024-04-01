@@ -9,6 +9,7 @@ from jinja2.exceptions import TemplateError
 from rpbuild import load_template
 from rpbuild.data import random_char, substitute_names, print_message
 from rpbuild.char import CharMeta, make_message
+from rpbuild.model import InstructTemplate
 
 # Generated when the Writer fails to generate a valid selection when choosing a character.
 class WriterSelectionError(Exception):
@@ -19,13 +20,24 @@ class WriterSelectionError(Exception):
 
 # "Writer" Agent. Chooses characters and writes a plot outline for them.
 class Writer():
-    def __init__(self, causal_lm, generation_config="Big-O", template_str=load_template("make_scenario.jinja"), debug_level=1):
+    def __init__(
+        self,
+        causal_lm,
+        generation_config="Big-O",
+        template=load_template("make_scenario.jinja"),
+        debug_level=1
+    ):
         self.causal_lm = causal_lm
         self.debug_level = debug_level
         self.generation_config = causal_lm.named_generation_config(generation_config)
-        self.environment =  jinja2.Environment()
-        self.template = self.environment.from_string(template_str)
-        self.choose_template = self.environment.from_string(load_template("select_character.jinja"))
+        self.write_prompt_t = InstructTemplate(
+            instruct_template=causal_lm.instruct_template,
+            template=template,
+        )
+        self.select_prompt_t = InstructTemplate(
+            instruct_template=causal_lm.instruct_template,
+            template=load_template("select_character.jinja"),
+        )
 
     def __call__(self, char_meta, user_meta):
         char_plist = substitute_names(
@@ -45,8 +57,8 @@ class Writer():
             char_meta.name,
             user_meta.name
         )
-        
-        prompt = self.template.render(
+
+        prompt = self.write_prompt_t.render(
             user_plist=user_plist,
             char_plist=char_plist,
             char=char_meta.name,
@@ -88,13 +100,19 @@ class Writer():
 
         if self.debug_level:
             print("choose_supporting_character(): retry limit reached. Selecting default")
-        return user_meta_list[0]
+        result = { 
+            "name": user_meta_list[0].name,
+            "meta": user_meta_list[0],
+            "reason": "Default",
+        }
+        return result
         
     def _choose_supporting_character(self, char_meta, user_meta_list):
-        prompt = self.choose_template.render(
+        prompt = self.select_prompt_t.render(
             char=char_meta,
             user_list=user_meta_list,
-        )
+        ) + "{\n    \"char_name\":"
+    
             
         if self.debug_level > 1:
             print_message(make_message(self.causal_lm, prompt, "Writer Prompt"))

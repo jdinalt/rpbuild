@@ -5,6 +5,7 @@ import torch
 import jinja2
 from transformers import StoppingCriteria
 from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM, GenerationConfig
+from rpbuild.data import load_template
 
 generation_presets = {
     "Simple-1": dict(
@@ -49,9 +50,32 @@ random_preset_keys = [key for key in generation_presets.keys()]
 
 # Causal LM abstraction
 class CausalLM():
-    def __init__(self, model_id, device, **kwargs):
+    def __init__(
+        self,
+        model_id,
+        device,
+        instruct_template=None,
+        chat_template=None,
+        **kwargs
+    ):
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
         self.tokenizer.deprecation_warnings["Asking-to-pad-a-fast-tokenizer"] = True
+
+        # Attach templates as attributes. A bit crude, but simplifies things for now.
+        # This may change in the future.
+        self.chat_template = chat_template
+        if chat_template is None:
+            print("No chat template specified. Attempting to use tokenizer default")
+            try:
+                self.chat_template = tokenizer.chat_template
+            except:
+                print("No default found. Using library default.")
+                self.chat_template = load_template("models/original.jinja")
+
+        self.instruct_template = instruct_template
+        if instruct_template is None:
+            print("No instruct template specified. Using default.")
+            self.instruct_template = load_template("instruct/alpaca.jinja")
         
         if self.tokenizer.pad_token is None:
             print("No PAD token defined. Setting pad token to EOS")
@@ -289,27 +313,31 @@ def tokenizer_completions(tokenizer, prompt, completions):
     # Return the tokenized prompts and lengths, with the original prompt at index 0
     return input_ids, lengths
 
+class InstructTemplate():
+    def __init__(self, instruct_template, template):
+        self.environment =  jinja2.Environment()
+        self.instruct_template = self.environment.from_string(instruct_template)
+        self.template = self.environment.from_string(template)
+
+    def render(self, system=None, **kwargs):
+        instruction = self.template.render(**kwargs)
+        prompt = self.instruct_template.render(system=system, instruction=instruction)
+        return prompt
+
 # A container for a prompt template
 # causal_lm: a CausalLM object
-# model_instruction_template: The model specfic instruction template.
 # template: The domain specific instruction template
 # filter: Post processor for generation
 class InstructGen():
-    def __init__(self, causal_lm, model_instruction_template, template, filter=None, generation_config="Big-O", debug_level=1):
+    def __init__(self, causal_lm, template, filter=None, generation_config="Big-O", debug_level=1):
         self.causal_lm = causal_lm
         self.debug_level = debug_level
         self.generation_config = causal_lm.named_generation_config(generation_config)
-        self.environment =  jinja2.Environment()
-        self.template = self.environment.from_string(template)
+        self.instruct_t = InstructTemplate(causal_lm.instruct_template, template)
         self.filter = filter
-        self.model_template = self.environment.from_string(model_instruction_template)
 
     def __call__(self, max_new_tokens=1024, **kwargs):
-        instruction = self.template.render(**kwargs)
-        prompt = self.model_template.render(instruction=instruction)
-        if self.debug_level > 1:
-            print(f"{'prompt':-^80}")
-            print(prompt)
+        prompt = self.render(**kwargs)
 
         outputs = self.causal_lm.generate_response(
             self.generation_config,
@@ -327,3 +355,10 @@ class InstructGen():
             response = self.filter(response, **kwargs)
         
         return response
+
+    def render(self, **kwargs):
+        prompt = self.instruct_t.render(**kwargs)
+        if self.debug_level > 1:
+            print(f"{'prompt':-^80}")
+            print(prompt)
+        return prompt

@@ -6,7 +6,15 @@ import jinja2
 from jinja2.exceptions import TemplateError
 
 from rpbuild import load_template
-from rpbuild.data import make_message, substitute_names, print_conversation, flatten_conversation
+from rpbuild.data import (
+    make_message,
+    substitute_names,
+    print_conversation,
+    flatten_conversation,
+    print_message,
+    impersonation_filter_re,
+    plist_filter_re
+)
 
 start_token_re = re.compile(r"<START>")
 
@@ -159,6 +167,12 @@ class Character(CharMeta):
         self.director_log.append(message)
         return message
 
+    def remove_last_message(self):
+        return self.conversation.pop()
+
+    def remove_last_director_message(self):
+        return self.director_log.pop()
+
     def greet(self):
         greeting = substitute_names(self.greeting, self.name, self.user_meta.name)
         return self.char_says(greeting)
@@ -303,19 +317,6 @@ class DialogFilter():
             return outputs
         control = outputs["control"]
         response = outputs["response"]
-
-        p = self._query(self.impersonation, response, char_meta.name, user_meta.name)
-        if p > 0.7:
-            if self.debug:
-                print(f"{'retry on impersonation p=' + str(p):#^80}")
-                print(response)
-            return dict(control="retry")
-
-        p = self._query(self.end_of_story, response, char_meta.name, user_meta.name)
-        if p > 0.7:
-            if self.debug:
-                print(f"{'end of story p=' + str(p):#^80}")
-            control = "stop"
         
         return dict(
             control=control,
@@ -330,20 +331,12 @@ class DialogFilter():
     @staticmethod
     def _clean_generation(response, char_name, user_name):
         control = "continue"
+        
         # Remove instances of impersonation / speaking more than once, 3rd parties, etc.
-        response = re.sub(r"\n[\w ']{4,32}:.*", "", response, flags=re.DOTALL)
-        #response = re.sub(f"({char_name}|{user_name}):.*", "", response, flags=re.DOTALL)
+        response = impersonation_filter_re.sub("", response)
     
         # Remove all square-brackets, which models seem to add to dialog after seeing the plist.
-        response = square_brackets_re.sub("", response)
-    
-        # End generation early on stopping tokens.
-        m = re.search(r"<END>", response) 
-        if m is not None:
-            if self.debug:
-                print(f"Stopping early on stop token: {m.group()}")
-            response = response[:m.start()]
-            control = "stop"
+        response = plist_filter_re.sub("", response)
         
         return { "response": response.strip(), "control": control }
 

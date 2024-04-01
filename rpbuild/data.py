@@ -13,6 +13,12 @@ TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 char_token_re = re.compile(r"\{\{char\}\}")
 user_token_re = re.compile(r"\{\{user\}\}")
 
+# Regex to find and strip the beginning of character impersonation
+impersonation_filter_re = re.compile(r"\n+[\w ']{3,48}:.*", flags=re.DOTALL)
+
+# Regex to find and strip plists.
+plist_filter_re = re.compile(r"\n{0,}[\[\]].*", flags=re.DOTALL)
+
 # Load a template from the templates directory
 def load_template(file_name):
     with open(os.path.join(TEMPLATES_DIR, file_name)) as file:
@@ -147,3 +153,4 @@ def flatten_conversation(
         output.append( { "role": role, "content": content } )
             
     return output
+
